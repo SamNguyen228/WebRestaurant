@@ -172,7 +172,7 @@ pipeline {
         stage('Clone') {
             steps {
                 echo 'Cloning source code'
-                git branch: 'master', url: 'https://github.com/zyond26/Restaurant_cicd.git'
+                git branch: 'main', url: 'https://github.com/SamNguyen228/WebRestaurant.git'
             }
         }
         stage('Restore Packages') {
