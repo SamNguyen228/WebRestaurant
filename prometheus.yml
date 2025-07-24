@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['host.docker.internal:9090']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+  
+  - job_name: 'web_restaurant'
+    static_configs:
+      - targets: ['web_restaurant:5000'] # Đảm bảo tên dịch vụ khớp với tên trong docker-compose.yml
+
+      
+  - job_name: 'jenkins'
+    static_configs:
+      - targets: ['host.docker.internal:8099']
+
