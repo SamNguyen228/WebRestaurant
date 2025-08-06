@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Prometheus; // Thêm dòng này
+using Prometheus;
 using System.Text;
 using WebRestaurant.Data;
 using WebRestaurant.Services;
@@ -12,29 +12,26 @@ var builder = WebApplication.CreateBuilder(args);
 // Đọc cấu hình từ appsettings.json
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-// Cấu hình Kestrel để bind tới 0.0.0.0 và PORT
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8090"; // Mặc định 8090 nếu không có PORT
-builder.WebHost.UseKestrel(options =>
-{
-    options.ListenAnyIP(int.Parse(port)); // Bind tới 0.0.0.0
-});
+// Cấu hình port chạy từ biến môi trường hoặc mặc định là 5000
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-builder.WebHost.UseIIS();
+builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 // Thêm DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection is not configured.")));
 
 // Cấu hình Data Protection
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"));
 
-// Cấu hình authentication với Cookie, JWT và Google
+// Cấu hình JWT & Cookie Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var jwtKey = jwtSettings["Key"];
 if (string.IsNullOrEmpty(jwtKey))
 {
-    throw new InvalidOperationException("Jwt:Key is not configured in appsettings.json.");
+    throw new InvalidOperationException("Jwt:Key is not configured in appsettings.json or environment variables.");
 }
 var key = Encoding.ASCII.GetBytes(jwtKey);
 
@@ -66,8 +63,8 @@ builder.Services.AddAuthentication(options =>
 .AddGoogle(googleOptions =>
 {
     var googleAuth = builder.Configuration.GetSection("Authentication:Google");
-    googleOptions.ClientId = googleAuth["ClientId"];
-    googleOptions.ClientSecret = googleAuth["ClientSecret"];
+    googleOptions.ClientId = googleAuth["ClientId"] ?? throw new InvalidOperationException("Google ClientId is not configured.");
+    googleOptions.ClientSecret = googleAuth["ClientSecret"] ?? throw new InvalidOperationException("Google ClientSecret is not configured.");
     googleOptions.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 });
 
@@ -87,11 +84,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Minio upload 
+// Tích hợp MinIO
 builder.Services.AddSingleton<MinioService>();
 
 var app = builder.Build();
 
+// Xử lý lỗi nếu không ở môi trường phát triển
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -107,22 +105,26 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Cấu hình Prometheus
-app.UseMetricServer(); // Thêm dòng này để sử dụng Metric Server
-app.UseHttpMetrics(); // Thêm dòng này để thu thập metrics HTTP
+// Prometheus metrics
+app.UseHttpMetrics();
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+    endpoints.MapMetrics();
+});
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Seed dữ liệu nếu chưa có
+// Seed dữ liệu ban đầu
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
