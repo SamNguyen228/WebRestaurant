@@ -27,7 +27,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Cấu hình Data Protection
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys")); // Lưu key vào volume
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"));
 
 // Cấu hình authentication với Cookie, JWT và Google
 var jwtSettings = builder.Configuration.GetSection("Jwt");

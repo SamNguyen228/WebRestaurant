@@ -155,18 +155,17 @@
 // }
 
 
-
 pipeline {
     agent any
     environment {
         LANG = 'en_US.UTF-8'
         LC_ALL = 'en_US.UTF-8'
         DOCKERHUB_CREDENTIALS = 'a8043e21-320b-4f12-b72e-612d7a93c553'
-        IMAGE_NAME = 'zyond/cicd'
-        DOCKER_IMAGE_NAME = 'zyond/cicd'
+        IMAGE_NAME = 'samduong/cicd'
+        DOCKER_IMAGE_NAME = 'samduong/cicd'
         DOCKER_TAG = 'latest'
-        KUBECONFIG_CREDENTIALS = 'kubeconfig'  // ID của kubeconfig trong Jenkins
-        MINIO_CREDENTIALS = 'ec062030-09a1-4183-8f4f-81e593dacae3'  // ID của credentials MinIO trong Jenkins
+        // KUBECONFIG_CREDENTIALS = 'kubeconfig'  // ID của kubeconfig trong Jenkins
+        // MINIO_CREDENTIALS = 'ec062030-09a1-4183-8f4f-81e593dacae3'  // ID của credentials MinIO trong Jenkins
     }
     stages {
         stage('Clone') {
@@ -175,24 +174,28 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/SamNguyen228/WebRestaurant.git'
             }
         }
+
         stage('Restore Packages') {
             steps {
                 echo 'Restoring NuGet packages...'
                 bat 'dotnet restore'
             }
         }
+
         stage('Build') {
             steps {
                 echo 'Building the project...'
                 bat 'dotnet build --configuration Release'
             }
         }
+
         stage('Run Tests') {
             steps {
                 echo 'Running unit tests...'
                 bat 'dotnet test --no-build --verbosity normal'
             }
         }
+
         stage('Publish to Folder') {
             steps {
                 echo 'Cleaning old publish folder...'
@@ -201,6 +204,7 @@ pipeline {
                 bat 'dotnet publish -c Release -o "%WORKSPACE%\\publish"'
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -208,6 +212,7 @@ pipeline {
                 }
             }
         }
+
         stage('Login to Docker Hub') {
             steps {
                 script {
@@ -217,6 +222,7 @@ pipeline {
                 }
             }
         }
+
         stage('Push Docker Image') {
             steps {
                 script {
@@ -228,41 +234,42 @@ pipeline {
         }
         
         // -      mino -----------------------
-        stage('Tạo file test') {
-            steps {
-                bat 'echo Build thành công > build-log.txt'
-            }
-        }
+        // stage('Tạo file test') {
+        //     steps {
+        //         bat 'echo Build thành công > build-log.txt'
+        //     }
+        // }
 
-        stage('Cấu hình AWS CLI cho MinIO') {
-            steps {
-                bat '"C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" configure set aws_access_key_id admin'
-                bat '"C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" configure set aws_secret_access_key 12345678'
+        // stage('Cấu hình AWS CLI cho MinIO') {
+        //     steps {
+        //         bat '"C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" configure set aws_access_key_id admin'
+        //         bat '"C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" configure set aws_secret_access_key 12345678'
 
-            }
-        }
+        //     }
+        // }
 
-        stage('Upload file lên MinIO') {
-            steps {
-                bat '"C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" --endpoint-url http://localhost:9000 s3 cp build-log.txt s3://order-files/build-log.txt'
-            }
-        }
+        // stage('Upload file lên MinIO') {
+        //     steps {
+        //         bat '"C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" --endpoint-url http://localhost:9000 s3 cp build-log.txt s3://order-files/build-log.txt'
+        //     }
+        // }
 
-// ------------------------------------------  k8s -----------------------------------
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
-                        writeFile file: 'kubeconfig.yaml', text: "${KUBECONFIG_CONTENT}"
-                        bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f restaurant-deployment.yaml'
-                        bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f minio-deployment.yaml'
-                        bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f prometheus-deployment.yaml'
-                        bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f cadvisor-deployment.yaml'
-                        bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f grafana-deployment.yaml'
-                    }
-                }
-            }
-        }
+        // ------------------------------------------  k8s -----------------------------------
+        // stage('Deploy to Kubernetes') {
+        //     steps {
+        //         script {
+        //             withCredentials([string(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
+        //                 writeFile file: 'kubeconfig.yaml', text: "${KUBECONFIG_CONTENT}"
+        //                 bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f restaurant-deployment.yaml'
+        //                 bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f minio-deployment.yaml'
+        //                 bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f prometheus-deployment.yaml'
+        //                 bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f cadvisor-deployment.yaml'
+        //                 bat 'set KUBECONFIG=%WORKSPACE%\\kubeconfig.yaml && kubectl apply -f grafana-deployment.yaml'
+        //             }
+        //         }
+        //     }
+        // }
+
         stage('Copy to IIS Folder') {
             steps {
                 echo 'Stopping IIS...'
@@ -277,6 +284,7 @@ pipeline {
                 bat 'iisreset /start'
             }
         }
+        
         stage('Ensure IIS Site Exists') {
             steps {
                 powershell '''
