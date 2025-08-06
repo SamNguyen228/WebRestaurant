@@ -2,4 +2,4 @@ hello my name is SamWison
 
 this is demo DevOps in .NET project
 
-thanks for support!
+thanks for support! hẹ hẹ
